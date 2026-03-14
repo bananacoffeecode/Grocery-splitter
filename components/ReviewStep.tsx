@@ -1,0 +1,202 @@
+'use client';
+
+import { useState } from 'react';
+import { useApp } from '@/lib/AppContext';
+import { ReceiptItem, Step } from '@/types';
+
+function generateId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+export default function ReviewStep() {
+  const { state, dispatch } = useApp();
+  const { items, receiptImageUrls } = state;
+  const [splittingId, setSplittingId] = useState<string | null>(null);
+
+  const canContinue = items.length > 0;
+
+  function updateItem(id: string, field: keyof ReceiptItem, value: string | number) {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    dispatch({ type: 'UPSERT_ITEM', payload: { ...item, [field]: value } });
+  }
+
+  function addItem() {
+    dispatch({
+      type: 'UPSERT_ITEM',
+      payload: { id: generateId(), name: '', price: 0, rawLine: '' },
+    });
+  }
+
+  function deleteItem(id: string) {
+    dispatch({ type: 'DELETE_ITEM', payload: id });
+  }
+
+  function keepItem(id: string) {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    const { quantity: _q, ...rest } = item;
+    dispatch({ type: 'UPSERT_ITEM', payload: { ...rest } });
+  }
+
+  function splitItem(id: string, qty: number) {
+    const item = items.find((i) => i.id === id);
+    if (!item || qty < 2) return;
+
+    const unitPrice = Math.floor((item.price / qty) * 100) / 100;
+    const remainder = Math.round((item.price - unitPrice * qty) * 100) / 100;
+
+    const splitItems: ReceiptItem[] = Array.from({ length: qty }, (_, i) => ({
+      id: generateId(),
+      name: `${item.name} #${i + 1}`,
+      price: i === 0 ? parseFloat((unitPrice + remainder).toFixed(2)) : unitPrice,
+      rawLine: item.rawLine,
+    }));
+
+    dispatch({ type: 'DELETE_ITEM', payload: id });
+    splitItems.forEach((si) => dispatch({ type: 'UPSERT_ITEM', payload: si }));
+  }
+
+  return (
+    <div className="flex flex-col gap-4 pt-4">
+      {receiptImageUrls.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-3">
+          <div className="flex gap-2 overflow-x-auto">
+            {receiptImageUrls.map((url, idx) => (
+              <img
+                key={idx}
+                src={url}
+                alt={`Receipt ${idx + 1}`}
+                className="h-32 w-24 flex-shrink-0 object-cover rounded-xl border border-gray-200"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
+        {items.map((item) => (
+          <div key={item.id}>
+            <div className="flex items-center gap-2 px-4 py-3">
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={item.name}
+                    onChange={(e) => updateItem(item.id, 'name', e.target.value)}
+                    placeholder="Item name"
+                    className="min-w-0 flex-1 text-sm border-none outline-none bg-transparent text-gray-900 font-medium"
+                  />
+                  {item.quantity && item.quantity > 1 && (
+                    <span className="text-xs text-gray-400 font-medium flex-shrink-0">&times;{item.quantity}</span>
+                  )}
+                </div>
+                {item.source && (
+                  <span className="text-xs text-gray-400 leading-tight">{item.source}</span>
+                )}
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                value={item.price === 0 ? '' : item.price}
+                onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+                className="w-20 text-sm border-none outline-none bg-transparent text-right text-gray-900 font-medium"
+              />
+              <button
+                onClick={() => setSplittingId(splittingId === item.id ? null : item.id)}
+                className="text-gray-300 hover:text-blue-400 text-sm min-w-[24px] transition-colors"
+                title="Split item"
+              >
+                ÷
+              </button>
+              <button
+                onClick={() => deleteItem(item.id)}
+                className="text-gray-300 hover:text-red-400 text-lg min-w-[24px] transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+            {splittingId === item.id && (
+              <div className="mx-4 mb-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+                <p className="text-xs text-blue-700 font-medium mb-2">Split into:</p>
+                <div className="flex gap-2 items-center">
+                  {[2, 3, 4].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { splitItem(item.id, n); setSplittingId(null); }}
+                      className="flex-1 text-xs bg-blue-500 text-white rounded-lg py-1.5 font-medium hover:bg-blue-600 transition-colors"
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setSplittingId(null)}
+                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1.5 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {item.quantity && item.quantity > 1 && (
+              <div className="mx-4 mb-3 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2">
+                <p className="text-xs text-yellow-700 font-medium mb-2">
+                  {item.quantity} units detected
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => keepItem(item.id)}
+                    className="flex-1 text-xs border border-yellow-300 text-yellow-700 rounded-lg py-1.5 font-medium bg-white"
+                  >
+                    Keep as one item
+                  </button>
+                  <button
+                    onClick={() => splitItem(item.id, item.quantity!)}
+                    className="flex-1 text-xs bg-yellow-400 text-yellow-900 rounded-lg py-1.5 font-medium"
+                  >
+                    Split into {item.quantity} items
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        <div className="px-4 py-3">
+          <button
+            onClick={addItem}
+            className="text-green-600 text-sm font-medium hover:text-green-700"
+          >
+            + Add item
+          </button>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center px-1">
+        <span className="text-sm text-gray-500">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+        <span className="font-semibold text-gray-800">
+          Total: ₹{items.reduce((s, i) => s + i.price, 0).toFixed(2)}
+        </span>
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => dispatch({ type: 'SET_STEP', payload: 1 as Step })}
+          className="min-h-[44px] flex-1 border border-gray-200 text-gray-600 font-semibold rounded-xl px-4 bg-white"
+        >
+          Back
+        </button>
+        <button
+          onClick={() => dispatch({ type: 'SET_STEP', payload: 3 as Step })}
+          disabled={!canContinue}
+          className="min-h-[44px] flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl px-4 transition-colors"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
