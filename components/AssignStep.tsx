@@ -6,7 +6,7 @@ import { ItemAssignment, Step } from '@/types';
 
 export default function AssignStep() {
   const { state, dispatch } = useApp();
-  const { items, people, assignments } = state;
+  const { items, people, assignments, currency } = state;
   const includedPeople = people.filter((p) => p.included);
 
   // Initialize assignments for items that don't have one yet
@@ -78,7 +78,7 @@ export default function AssignStep() {
             <div key={item.id} className="bg-white rounded-2xl shadow-sm px-4 py-4">
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-gray-800 text-sm flex-1 mr-2">{item.name}</span>
-                <span className="text-gray-600 font-semibold text-sm">₹{item.price.toFixed(2)}</span>
+                <span className="text-gray-600 font-semibold text-sm">{currency}{item.price.toFixed(2)}</span>
               </div>
 
               {(item.source && item.source !== 'Receipt') || item.orderDate ? (
@@ -136,7 +136,7 @@ export default function AssignStep() {
               {assignment.mode === 'equal' && (
                 <p className="text-xs text-gray-400">
                   Split between {includedPeople.length} {includedPeople.length === 1 ? 'person' : 'people'}
-                  {' '}(₹{(item.price / Math.max(includedPeople.length, 1)).toFixed(2)} each)
+                  {' '}({currency}{(item.price / Math.max(includedPeople.length, 1)).toFixed(2)} each)
                 </p>
               )}
             </div>

@@ -19,7 +19,7 @@ function computeBills(items: ReceiptItem[]) {
 
 export default function BreakdownStep() {
   const { state, dispatch } = useApp();
-  const { items, people, assignments } = state;
+  const { items, people, assignments, currency } = state;
   const cardRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -54,7 +54,7 @@ export default function BreakdownStep() {
   }
 
   async function handleCopy() {
-    const text = formatSplitwiseText(personTotals, items, assignments, people);
+    const text = formatSplitwiseText(personTotals, items, assignments, people, currency);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -97,7 +97,7 @@ export default function BreakdownStep() {
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: '12px', marginTop: '6px' }}>
                 <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500 }}>{bill.source}</span>
                 <span style={{ fontSize: '12px', color: '#9ca3af', flex: 1, textAlign: 'center' }}>{bill.orderDate ?? ''}</span>
-                <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500 }}>₹{bill.total.toFixed(2)}</span>
+                <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500 }}>{currency}{bill.total.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -108,13 +108,13 @@ export default function BreakdownStep() {
             <div key={pt.personId} style={{ borderBottom: '1px solid #f3f4f6', paddingTop: '12px', paddingBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontWeight: 700, fontSize: '16px', color: '#1f2937' }}>{pt.name}</span>
-                <span style={{ fontWeight: 700, fontSize: '16px', color: '#16a34a' }}>₹{pt.total.toFixed(2)}</span>
+                <span style={{ fontWeight: 700, fontSize: '16px', color: '#16a34a' }}>{currency}{pt.total.toFixed(2)}</span>
               </div>
               {pt.items.map((lineItem, i) => (
                 <div key={i} style={{ paddingLeft: '12px', marginBottom: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '13px', color: '#6b7280' }}>{lineItem.name}</span>
-                    <span style={{ fontSize: '13px', color: '#6b7280' }}>₹{lineItem.share.toFixed(2)}</span>
+                    <span style={{ fontSize: '13px', color: '#6b7280' }}>{currency}{lineItem.share.toFixed(2)}</span>
                   </div>
                   {(lineItem.source && lineItem.source !== 'Receipt') || lineItem.orderDate ? (
                     <span style={{ fontSize: '11px', color: '#d1d5db' }}>
@@ -131,7 +131,7 @@ export default function BreakdownStep() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '14px', marginTop: '4px', borderTop: '2px solid #e5e7eb' }}>
           <span style={{ fontWeight: 700, fontSize: '17px', color: '#1f2937' }}>Total</span>
-          <span style={{ fontWeight: 700, fontSize: '17px', color: '#1f2937' }}>₹{total.toFixed(2)}</span>
+          <span style={{ fontWeight: 700, fontSize: '17px', color: '#1f2937' }}>{currency}{total.toFixed(2)}</span>
         </div>
       </div>
 

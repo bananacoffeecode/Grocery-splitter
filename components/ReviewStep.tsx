@@ -10,7 +10,7 @@ function generateId() {
 
 export default function ReviewStep() {
   const { state, dispatch } = useApp();
-  const { items, receiptImageUrls } = state;
+  const { items, receiptImageUrls, currency } = state;
   const [splittingId, setSplittingId] = useState<string | null>(null);
 
   const canContinue = items.length > 0;
@@ -178,7 +178,7 @@ export default function ReviewStep() {
       <div className="flex justify-between items-center px-1">
         <span className="text-sm text-gray-500">{items.length} item{items.length !== 1 ? 's' : ''}</span>
         <span className="font-semibold text-gray-800">
-          Total: ₹{items.reduce((s, i) => s + i.price, 0).toFixed(2)}
+          Total: {currency}{items.reduce((s, i) => s + i.price, 0).toFixed(2)}
         </span>
       </div>
 

@@ -17,17 +17,24 @@ function toBase64(file: File): Promise<string> {
   });
 }
 
-function deduplicateItems(items: ReceiptItem[]): { items: ReceiptItem[]; removedCount: number } {
-  const seen = new Set<string>();
+// Deduplicates across receipt files only — items within the same receipt are never removed,
+// so buying the same product twice on one receipt is correctly preserved.
+function deduplicateItems(groups: ReceiptItem[][]): { items: ReceiptItem[]; removedCount: number } {
+  const seenAcrossReceipts = new Set<string>();
   const deduped: ReceiptItem[] = [];
   let removedCount = 0;
-  for (const item of items) {
-    const key = `${item.name.toLowerCase().trim()}::${item.price}`;
-    if (seen.has(key)) {
-      removedCount++;
-    } else {
-      seen.add(key);
-      deduped.push(item);
+  for (const group of groups) {
+    for (const item of group) {
+      const key = `${item.name.toLowerCase().trim()}::${item.price}`;
+      if (seenAcrossReceipts.has(key)) {
+        removedCount++;
+      } else {
+        deduped.push(item);
+      }
+    }
+    // Mark all keys from this receipt as seen after processing the whole group
+    for (const item of group) {
+      seenAcrossReceipts.add(`${item.name.toLowerCase().trim()}::${item.price}`);
     }
   }
   return { items: deduped, removedCount };
@@ -61,7 +68,8 @@ export default function UploadStep() {
     setError(null);
 
     try {
-      const allItems: ReceiptItem[] = [];
+      const allItemGroups: ReceiptItem[][] = [];
+      let detectedCurrency = '₹';
 
       for (let i = 0; i < files.length; i++) {
         setScannedCount(i + 1);
@@ -77,7 +85,8 @@ export default function UploadStep() {
           throw new Error(err.error || `Failed to parse image ${i + 1}`);
         }
 
-        const { items, source, orderDate } = await res.json();
+        const { items, source, orderDate, currency } = await res.json();
+        if (currency && currency !== '₹') detectedCurrency = currency;
         const receiptItems: ReceiptItem[] = items.map((item: { name: string; price: number; quantity?: number }) => ({
           id: generateId(),
           name: item.name,
@@ -87,13 +96,14 @@ export default function UploadStep() {
           source: source || 'Receipt',
           orderDate: orderDate || undefined,
         }));
-        allItems.push(...receiptItems);
+        allItemGroups.push(receiptItems);
       }
 
-      const { items: deduped } = deduplicateItems(allItems);
+      const { items: deduped } = deduplicateItems(allItemGroups);
 
       dispatch({ type: 'SET_RECEIPTS', payload: previews });
       dispatch({ type: 'SET_ITEMS', payload: deduped });
+      dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
       dispatch({ type: 'SET_STEP', payload: 2 as Step });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');

@@ -63,7 +63,8 @@ export function formatSplitwiseText(
   personTotals: PersonTotal[],
   items: ReceiptItem[],
   assignments: ItemAssignment[],
-  people: Person[]
+  people: Person[],
+  currency = '₹'
 ): string {
   const date = new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -85,7 +86,7 @@ export function formatSplitwiseText(
   });
 
   const breakdownLines = personTotals.map(
-    (pt) => `${pt.name}: ₹${pt.total.toFixed(2)}`
+    (pt) => `${pt.name}: ${currency}${pt.total.toFixed(2)}`
   );
 
   const total = grandTotal(items);
@@ -99,6 +100,6 @@ export function formatSplitwiseText(
     'Breakdown:',
     ...breakdownLines,
     '',
-    `Total: ₹${total.toFixed(2)}`,
+    `Total: ${currency}${total.toFixed(2)}`,
   ].join('\n');
 }

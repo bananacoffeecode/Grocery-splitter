@@ -18,20 +18,24 @@ export async function POST(req: Request) {
             },
             {
               type: 'text',
-              text: `Extract all grocery line items from this receipt image.
+              text: `Extract all line items from this receipt image.
 Return ONLY valid JSON with this shape, no markdown, no explanation:
 {
   "source": "Blinkit",
   "orderDate": "12 Mar 2026",
+  "currency": "$",
   "items": [{"name": "Item Name", "price": 1.99, "quantity": 1}, ...]
 }
-Identify the delivery app: look for "Blinkit" (yellow branding), "Swiggy Instamart" (orange, "Order details" header with product thumbnails), "Amazon Now" or "Amazon Fresh" (ORDER # format like "ORDER #2324...", shows address like "Home Blr"), "Zepto" (purple), "BigBasket" (red), "DMart". If unidentifiable, use "Receipt".
-Also extract "orderDate": the date of the order visible in the screenshot (format "D MMM YYYY"). Use null if not visible.
+Also extract "currency": the currency symbol used in this receipt (e.g. "$", "₹", "£", "€"). Use "₹" if unidentifiable.
+Identify the source: look for "Blinkit" (yellow branding), "Swiggy Instamart" (orange, "Order details" header with product thumbnails), "Amazon Now" or "Amazon Fresh" (ORDER # format like "ORDER #2324...", shows address like "Home Blr"), "Zepto" (purple), "BigBasket" (red), "DMart". For physical store receipts (thermal/printed paper), use the store name if visible, otherwise use "Receipt".
+Also extract "orderDate": the date of the order or purchase visible in the receipt (format "D MMM YYYY"). Use null if not visible.
 Rules:
-- Exclude: subtotals, totals, taxes, VAT, discounts, loyalty points, cash, change, card payments
-- Include only purchasable items with a positive price
+- Include all purchasable items with a positive price
+- Include fees: delivery fee, service fee, handling fee, platform fee, convenience fee, packing charges, surge charges — include these as items with their actual name
+- Exclude ONLY: subtotals, grand totals, discounts, savings, loyalty points, cash paid, card charged, change given, balance due
 - Always include quantity (default 1 if single unit)
 - If an item has a quantity (e.g. 2x), set quantity to that number and price to the TOTAL price (not unit price)
+- For physical/printed receipts: extract items even if the price is on the next line, or item names include product codes — clean up names
 - Clean up item names (remove product codes, trailing asterisks)`,
             },
           ],
@@ -46,10 +50,11 @@ Rules:
     const items = Array.isArray(parsed) ? parsed : parsed.items;
     const source: string = Array.isArray(parsed) ? 'Receipt' : (parsed.source || 'Receipt');
     const orderDate: string | null = Array.isArray(parsed) ? null : (parsed.orderDate ?? null);
+    const currency: string = Array.isArray(parsed) ? '₹' : (parsed.currency || '₹');
 
     if (!Array.isArray(items)) throw new Error('Response is not an array');
 
-    return Response.json({ items, source, orderDate });
+    return Response.json({ items, source, orderDate, currency });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to parse receipt';
     return Response.json({ error: message }, { status: 500 });
