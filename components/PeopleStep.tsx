@@ -118,7 +118,7 @@ export default function PeopleStep() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addPerson()}
           placeholder="Add a person..."
-          className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-green-400"
+          className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-green-400"
         />
         <button
           onClick={addPerson}
