@@ -33,8 +33,9 @@ Rules:
 - Include all purchasable items with a positive price
 - Include fees: delivery fee, service fee, handling fee, platform fee, convenience fee, packing charges, surge charges — include these as items with their actual name
 - Exclude ONLY: subtotals, grand totals, discounts, savings, loyalty points, cash paid, card charged, change given, balance due
+- IMPORTANT: If the same item name appears on multiple separate lines, include it as a SEPARATE entry for each line — do NOT merge or deduplicate them
 - Always include quantity (default 1 if single unit)
-- If an item has a quantity (e.g. 2x), set quantity to that number and price to the TOTAL price (not unit price)
+- If an item has a quantity (e.g. 2x or "2 @"), set quantity to that number and price to the TOTAL price (not unit price)
 - For physical/printed receipts: extract items even if the price is on the next line, or item names include product codes — clean up names
 - Clean up item names (remove product codes, trailing asterisks)`,
             },
