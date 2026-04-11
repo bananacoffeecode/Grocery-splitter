@@ -14,6 +14,7 @@ export interface AppState {
   people: Person[];
   assignments: ItemAssignment[];
   currency: string;
+  scanWarning: string | null;
 }
 
 const defaultPeople: Person[] = [
@@ -38,6 +39,7 @@ const initialState: AppState = {
   people: defaultPeople,
   assignments: [],
   currency: '₹',
+  scanWarning: null,
 };
 
 // ── Actions ────────────────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ export type Action =
   | { type: 'SET_RECEIPTS'; payload: string[] }
   | { type: 'SET_ITEMS'; payload: ReceiptItem[] }
   | { type: 'SET_CURRENCY'; payload: string }
+  | { type: 'SET_SCAN_WARNING'; payload: string | null }
   | { type: 'UPSERT_ITEM'; payload: ReceiptItem }
   | { type: 'DELETE_ITEM'; payload: string }
   | { type: 'SET_PEOPLE'; payload: Person[] }
@@ -64,6 +67,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, items: action.payload };
     case 'SET_CURRENCY':
       return { ...state, currency: action.payload };
+    case 'SET_SCAN_WARNING':
+      return { ...state, scanWarning: action.payload };
     case 'UPSERT_ITEM': {
       const exists = state.items.find((i) => i.id === action.payload.id);
       return {

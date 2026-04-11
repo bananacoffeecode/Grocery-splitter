@@ -10,8 +10,9 @@ function generateId() {
 
 export default function ReviewStep() {
   const { state, dispatch } = useApp();
-  const { items, receiptImageUrls, currency } = state;
+  const { items, receiptImageUrls, currency, scanWarning } = state;
   const [splittingId, setSplittingId] = useState<string | null>(null);
+  const [fullscreenUrl, setFullscreenUrl] = useState<string | null>(null);
 
   const canContinue = items.length > 0;
 
@@ -59,6 +60,32 @@ export default function ReviewStep() {
 
   return (
     <div className="flex flex-col gap-4 pt-4">
+      {/* Fullscreen image lightbox */}
+      {fullscreenUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setFullscreenUrl(null)}
+        >
+          <img
+            src={fullscreenUrl}
+            alt="Receipt fullscreen"
+            className="max-w-full max-h-full object-contain rounded-xl"
+          />
+          <button
+            className="absolute top-4 right-4 text-white text-3xl leading-none w-10 h-10 flex items-center justify-center"
+            onClick={() => setFullscreenUrl(null)}
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
+      {scanWarning && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 text-yellow-800 text-sm">
+          {scanWarning}
+        </div>
+      )}
+
       {receiptImageUrls.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm p-3">
           <div className="flex gap-2 overflow-x-auto">
@@ -67,10 +94,12 @@ export default function ReviewStep() {
                 key={idx}
                 src={url}
                 alt={`Receipt ${idx + 1}`}
-                className="h-32 w-24 flex-shrink-0 object-cover rounded-xl border border-gray-200"
+                className="h-32 w-24 flex-shrink-0 object-cover rounded-xl border border-gray-200 cursor-pointer active:opacity-75"
+                onClick={() => setFullscreenUrl(url)}
               />
             ))}
           </div>
+          <p className="text-xs text-gray-400 mt-2">Tap a receipt to view fullscreen</p>
         </div>
       )}
 
@@ -85,7 +114,7 @@ export default function ReviewStep() {
                     value={item.name}
                     onChange={(e) => updateItem(item.id, 'name', e.target.value)}
                     placeholder="Item name"
-                    className="min-w-0 flex-1 text-sm border-none outline-none bg-transparent text-gray-900 font-medium"
+                    className={`min-w-0 flex-1 text-sm border-none outline-none bg-transparent font-medium ${item.price < 0 ? 'text-green-700' : 'text-gray-900'}`}
                   />
                   {item.quantity && item.quantity > 1 && (
                     <span className="text-xs text-gray-400 font-medium flex-shrink-0">&times;{item.quantity}</span>
@@ -98,12 +127,11 @@ export default function ReviewStep() {
               <input
                 type="number"
                 step="0.01"
-                min="0"
                 inputMode="decimal"
                 value={item.price === 0 ? '' : item.price}
                 onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
                 placeholder="0.00"
-                className="w-20 text-sm border-none outline-none bg-transparent text-right text-gray-900 font-medium"
+                className={`w-20 text-sm border-none outline-none bg-transparent text-right font-medium ${item.price < 0 ? 'text-green-600' : 'text-gray-900'}`}
               />
               <button
                 onClick={() => setSplittingId(splittingId === item.id ? null : item.id)}

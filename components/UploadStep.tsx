@@ -70,6 +70,7 @@ export default function UploadStep() {
     try {
       const allItemGroups: ReceiptItem[][] = [];
       let detectedCurrency = '₹';
+      const allTallyWarnings: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
         setScannedCount(i + 1);
@@ -85,8 +86,11 @@ export default function UploadStep() {
           throw new Error(err.error || `Failed to parse image ${i + 1}`);
         }
 
-        const { items, source, orderDate, currency } = await res.json();
+        const { items, source, orderDate, currency, tallyWarning } = await res.json();
         if (currency && currency !== '₹') detectedCurrency = currency;
+        if (tallyWarning) {
+          allTallyWarnings.push(tallyWarning);
+        }
         const receiptItems: ReceiptItem[] = items.map((item: { name: string; price: number; quantity?: number }) => ({
           id: generateId(),
           name: item.name,
@@ -104,6 +108,7 @@ export default function UploadStep() {
       dispatch({ type: 'SET_RECEIPTS', payload: previews });
       dispatch({ type: 'SET_ITEMS', payload: deduped });
       dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
+      dispatch({ type: 'SET_SCAN_WARNING', payload: allTallyWarnings.length > 0 ? allTallyWarnings.join('\n') : null });
       dispatch({ type: 'SET_STEP', payload: 2 as Step });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
