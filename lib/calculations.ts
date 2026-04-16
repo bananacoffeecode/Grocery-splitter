@@ -64,9 +64,10 @@ export function formatSplitwiseText(
   items: ReceiptItem[],
   assignments: ItemAssignment[],
   people: Person[],
-  currency = '₹'
+  currency = '₹',
+  billDate?: string
 ): string {
-  const date = new Date().toLocaleDateString('en-GB', {
+  const date = billDate ?? new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

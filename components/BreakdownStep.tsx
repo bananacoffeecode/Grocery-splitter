@@ -28,7 +28,9 @@ export default function BreakdownStep() {
   const total = grandTotal(items);
   const bills = computeBills(items);
 
-  const dateStr = new Date().toLocaleDateString('en-GB', {
+  // Use the receipt's order date; fall back to today if none found
+  const firstOrderDate = items.find(i => i.orderDate)?.orderDate;
+  const dateStr = firstOrderDate ?? new Date().toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -54,7 +56,7 @@ export default function BreakdownStep() {
   }
 
   async function handleCopy() {
-    const text = formatSplitwiseText(personTotals, items, assignments, people, currency);
+    const text = formatSplitwiseText(personTotals, items, assignments, people, currency, dateStr);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);

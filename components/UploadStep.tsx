@@ -98,7 +98,7 @@ export default function UploadStep() {
           rawLine: item.name,
           quantity: item.quantity && item.quantity > 1 ? item.quantity : undefined,
           source: source || 'Receipt',
-          orderDate: orderDate || undefined,
+          orderDate: orderDate || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
         }));
         allItemGroups.push(receiptItems);
       }

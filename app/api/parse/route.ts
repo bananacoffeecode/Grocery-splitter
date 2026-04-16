@@ -29,12 +29,22 @@ Return ONLY valid JSON with this shape, no markdown, no explanation:
 }
 Also extract "currency": the currency symbol used in this receipt (e.g. "$", "₹", "£", "€"). Use "₹" if unidentifiable.
 Also extract "grandTotal": the final total amount paid/charged shown on the receipt (after all discounts and fees are applied). Use null if not visible.
-Identify the source: look for "Blinkit" (yellow branding), "Swiggy Instamart" (orange, "Order details" header with product thumbnails), "Amazon Now" or "Amazon Fresh" (ORDER # format like "ORDER #2324...", shows address like "Home Blr"), "Zepto" (purple), "BigBasket" (red), "DMart". For physical store receipts (thermal/printed paper), use the store name if visible, otherwise use "Receipt".
-Also extract "orderDate": the date of the order or purchase visible in the receipt (format "D MMM YYYY"). Use null if not visible.
+Identify the source store or platform. Check for these in order:
+- "Blinkit": yellow branding, green owl logo, "blinkit" text anywhere, or "Blinkit" in the header
+- "Swiggy Instamart": orange branding, "Instamart" text, "Order details" header with product thumbnails
+- "Swiggy": orange branding with "Swiggy" text (food delivery, not Instamart)
+- "Amazon": "ORDER #" prefix (e.g. "ORDER #402-..."), "amazon.in", "Amazon Fresh", "Amazon Now", Amazon Prime branding, or a delivery address shown as a short label (e.g. "Home Blr")
+- "Zepto": purple/dark branding, "Zepto" text
+- "BigBasket": red branding, "bigbasket" or "BB" text
+- "DMart": "D-Mart", "DMart", or "Avenue Supermarts" text
+- "JioMart": "JioMart", "Jio Mart", or "Reliance Retail" text
+- "Dunzo": "Dunzo" text
+For physical store receipts (thermal/printed paper), use the store name if visible, otherwise use "Receipt".
+Also extract "orderDate": the date of the order or purchase visible in the receipt (format "D MMM YYYY", e.g. "12 Mar 2026"). Use null if not visible.
 Rules:
 - Include all purchasable items with a positive price
-- Include fees: delivery fee, service fee, handling fee, platform fee, convenience fee, packing charges, surge charges — include these as items with their actual name and a positive price
-- Include ALL discounts, coupons, promo codes, and savings as items with NEGATIVE prices (e.g. {"name": "Coupon Discount", "price": -50, "quantity": 1}). Do NOT skip any discount line.
+- Include fees that are actually charged: delivery fee, service fee, handling fee, platform fee, convenience fee, packing charges, surge charges — include these as items with their actual name and a POSITIVE price. IMPORTANT: if a fee is shown as FREE, waived, crossed out, or ₹0, do NOT include it at all — skip both the fee and any associated waiver/discount for it.
+- Include ALL discounts, coupons, promo codes, and savings as items with NEGATIVE prices (e.g. {"name": "Coupon Discount", "price": -50, "quantity": 1}). Do NOT skip any discount line. Exception: do NOT include a discount that merely cancels a fee you already excluded (e.g. a "free delivery" discount for a delivery fee you did not include).
 - Exclude ONLY: subtotals, grand totals, cash paid, card charged, change given, balance due, loyalty points balance
 - IMPORTANT tally check: after extracting all items (positive + negative), sum their prices. This sum MUST equal grandTotal. If it does not match, re-examine the receipt — you have missed an item or discount. Adjust until the sum matches.
 - IMPORTANT: If the same item name appears on multiple separate lines, include it as a SEPARATE entry for each line — do NOT merge or deduplicate them
