@@ -30,3 +30,18 @@ export interface PersonTotal {
 }
 
 export type Step = 1 | 2 | 3 | 4 | 5;
+
+export interface SplitwiseMember {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
+
+export interface SplitwiseGroup {
+  id: number;
+  name: string;
+  members: SplitwiseMember[];
+}
+
+// appPersonId -> SplitwiseMember.id, or null if not mapped
+export type PersonMapping = Map<string, number | null>;

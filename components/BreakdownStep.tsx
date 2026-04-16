@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useApp } from '@/lib/AppContext';
 import { ReceiptItem, PersonTotal, Step } from '@/types';
 import { calculateSplit, grandTotal, formatSplitwiseText } from '@/lib/calculations';
+import SplitwiseModal from '@/components/SplitwiseModal';
 
 function computeBills(items: ReceiptItem[]) {
   const map = new Map<string, { source: string; orderDate?: string; total: number }>();
@@ -23,6 +24,7 @@ export default function BreakdownStep() {
   const cardRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showSplitwise, setShowSplitwise] = useState(false);
 
   const personTotals = calculateSplit(items, people, assignments);
   const total = grandTotal(items);
@@ -138,20 +140,32 @@ export default function BreakdownStep() {
       </div>
 
       {/* Buttons — outside card ref so they don't appear in screenshot */}
+
+      {/* Primary CTA */}
       <button
-        onClick={handleDownload}
-        disabled={downloading}
-        className="min-h-[44px] bg-green-500 hover:bg-green-600 disabled:bg-gray-200 text-white font-semibold rounded-xl px-4 transition-colors"
+        onClick={() => setShowSplitwise(true)}
+        className="min-h-[44px] text-white font-semibold rounded-xl px-4 transition-colors"
+        style={{ backgroundColor: '#1EB941' }}
       >
-        {downloading ? 'Generating...' : 'Download Image'}
+        Add to Splitwise
       </button>
 
-      <button
-        onClick={handleCopy}
-        className="min-h-[44px] border border-gray-200 bg-white text-gray-700 font-semibold rounded-xl px-4 hover:bg-gray-50 transition-colors"
-      >
-        {copied ? 'Copied!' : 'Copy Text'}
-      </button>
+      {/* Secondary actions side-by-side */}
+      <div className="flex gap-3">
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="flex-1 min-h-[44px] border border-gray-200 bg-white disabled:bg-gray-100 text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
+        >
+          {downloading ? 'Generating...' : 'Save Image'}
+        </button>
+        <button
+          onClick={handleCopy}
+          className="flex-1 min-h-[44px] border border-gray-200 bg-white text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
+        >
+          {copied ? 'Copied!' : 'Copy Text'}
+        </button>
+      </div>
 
       <button
         onClick={() => dispatch({ type: 'SET_STEP', payload: 4 as Step })}
@@ -166,6 +180,16 @@ export default function BreakdownStep() {
       >
         Start over
       </button>
+
+      {showSplitwise && (
+        <SplitwiseModal
+          personTotals={personTotals}
+          items={items}
+          currency={currency}
+          dateStr={dateStr}
+          onClose={() => setShowSplitwise(false)}
+        />
+      )}
     </div>
   );
 }
