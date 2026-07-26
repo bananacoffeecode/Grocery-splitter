@@ -17,12 +17,9 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-// Downscale + JPEG-compress the receipt so it stays under OCR.space's 1MB free-tier
-// limit, while keeping enough resolution for the OCR to read prices accurately.
-// Returns the base64 payload plus the rendered canvas (reused for client-side OCR).
-async function toUploadBase64(
-  file: File
-): Promise<{ base64: string; mimeType: string; canvas: HTMLCanvasElement }> {
+// Downscale + JPEG-compress the receipt to keep the upload payload small while
+// preserving enough resolution for the vision model to read prices accurately.
+async function toUploadBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   const img = await loadImage(file);
   const maxDim = 2200;
   const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
@@ -39,60 +36,11 @@ async function toUploadBase64(
 
   let quality = 0.85;
   let dataUrl = canvas.toDataURL('image/jpeg', quality);
-  // Shrink until the base64 payload is comfortably under 1MB.
   while (dataUrl.length > 1_300_000 && quality > 0.4) {
     quality -= 0.15;
     dataUrl = canvas.toDataURL('image/jpeg', quality);
   }
-  return { base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', canvas };
-}
-
-// Free, no-API-cost OCR that runs entirely in the browser via tesseract.js.
-// Grayscale + contrast-stretch the canvas first — receipts are dark text on light
-// paper, so this markedly improves digit accuracy. Scales infinitely because the
-// compute is the user's, not ours. Returns '' on failure (server can still fall back).
-async function ocrInBrowser(canvas: HTMLCanvasElement): Promise<string> {
-  try {
-    const ctx = canvas.getContext('2d')!;
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      // Contrast stretch around mid-gray to sharpen text edges.
-      const v = Math.max(0, Math.min(255, (g - 128) * 1.4 + 128));
-      d[i] = d[i + 1] = d[i + 2] = v;
-    }
-    ctx.putImageData(img, 0, 0);
-
-    const Tesseract = (await import('tesseract.js')).default;
-    const { data } = await Tesseract.recognize(canvas, 'eng');
-    return data.text || '';
-  } catch {
-    return '';
-  }
-}
-
-// Deduplicates across receipt files only — items within the same receipt are never removed,
-// so buying the same product twice on one receipt is correctly preserved.
-function deduplicateItems(groups: ReceiptItem[][]): { items: ReceiptItem[]; removedCount: number } {
-  const seenAcrossReceipts = new Set<string>();
-  const deduped: ReceiptItem[] = [];
-  let removedCount = 0;
-  for (const group of groups) {
-    for (const item of group) {
-      const key = `${item.name.toLowerCase().trim()}::${item.price}`;
-      if (seenAcrossReceipts.has(key)) {
-        removedCount++;
-      } else {
-        deduped.push(item);
-      }
-    }
-    // Mark all keys from this receipt as seen after processing the whole group
-    for (const item of group) {
-      seenAcrossReceipts.add(`${item.name.toLowerCase().trim()}::${item.price}`);
-    }
-  }
-  return { items: deduped, removedCount };
+  return { base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' };
 }
 
 export default function UploadStep() {
@@ -101,7 +49,6 @@ export default function UploadStep() {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
-  const [scannedCount, setScannedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -143,64 +90,48 @@ export default function UploadStep() {
   async function handleScan() {
     if (!files.length) return;
     setScanning(true);
-    setScannedCount(0);
     setError(null);
 
     try {
-      let detectedCurrency = '₹';
-      const allTallyWarnings: string[] = [];
-      let completed = 0;
-
-      // Ask the server which engine is active. With a valid Groq key it reads the
-      // image directly, so we skip client OCR; otherwise run free browser OCR.
-      let engine: 'groq' | 'ocr' = 'ocr';
-      try {
-        const cap = await fetch('/api/parse');
-        if (cap.ok) engine = (await cap.json()).engine ?? 'ocr';
-      } catch {
-        /* default to the free OCR path */
-      }
-
-      // Scan all receipts in parallel: send each image to the API, which OCRs and structures it.
-      const groups = await Promise.all(
-        files.map(async (file, i) => {
-          const { base64, mimeType, canvas } = await toUploadBase64(file);
-          // Free path: OCR in the browser (no API cost) and send the text along.
-          const ocrText = engine === 'ocr' ? await ocrInBrowser(canvas) : undefined;
-          const res = await fetch('/api/parse', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageBase64: base64, mimeType, ocrText }),
-          });
-
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || `Failed to parse image ${i + 1}`);
-          }
-
-          const { items, source, orderDate, currency, tallyWarning } = await res.json();
-          setScannedCount(++completed);
-          if (currency && currency !== '₹') detectedCurrency = currency;
-          if (tallyWarning) allTallyWarnings.push(tallyWarning);
-
-          return items.map((item: { name: string; price: number; quantity?: number }) => ({
-            id: generateId(),
-            name: item.name,
-            price: item.price,
-            rawLine: item.name,
-            quantity: item.quantity && item.quantity > 1 ? item.quantity : undefined,
-            source: source || 'Receipt',
-            orderDate: orderDate || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-          })) as ReceiptItem[];
+      // Send ALL screenshots together in one request. Groq reads them as a single
+      // receipt — merging overlapping screenshots and de-duplicating shared items —
+      // so the result tallies to one total. No client-side OCR: Groq only.
+      const images = await Promise.all(
+        files.map(async (file) => {
+          const { base64, mimeType } = await toUploadBase64(file);
+          return { imageBase64: base64, mimeType };
         })
       );
 
-      const { items: deduped } = deduplicateItems(groups);
+      const res = await fetch('/api/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to scan receipt.');
+      }
+
+      const { items, source, orderDate, currency, tallyWarning } = await res.json();
+
+      const receiptItems = (items as { name: string; price: number; quantity?: number }[]).map(
+        (item) => ({
+          id: generateId(),
+          name: item.name,
+          price: item.price,
+          rawLine: item.name,
+          quantity: item.quantity && item.quantity > 1 ? item.quantity : undefined,
+          source: source || 'Receipt',
+          orderDate: orderDate || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        })
+      ) as ReceiptItem[];
 
       dispatch({ type: 'SET_RECEIPTS', payload: previews });
-      dispatch({ type: 'SET_ITEMS', payload: deduped });
-      dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
-      dispatch({ type: 'SET_SCAN_WARNING', payload: allTallyWarnings.length > 0 ? allTallyWarnings.join('\n') : null });
+      dispatch({ type: 'SET_ITEMS', payload: receiptItems });
+      dispatch({ type: 'SET_CURRENCY', payload: currency && currency !== '₹' ? currency : '₹' });
+      dispatch({ type: 'SET_SCAN_WARNING', payload: tallyWarning || null });
       dispatch({ type: 'SET_STEP', payload: 2 as Step });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
@@ -289,7 +220,7 @@ export default function UploadStep() {
         {scanning ? (
           <span className="inline-flex items-center gap-2">
             <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            {`Scanning ${scannedCount} / ${files.length}…`}
+            {files.length > 1 ? `Reading ${files.length} screenshots…` : 'Reading receipt…'}
           </span>
         ) : hasFiles ? (
           `Scan ${files.length > 1 ? `all ${files.length} receipts` : 'Receipt'}`
