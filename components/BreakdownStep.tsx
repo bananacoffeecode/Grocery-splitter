@@ -144,7 +144,7 @@ export default function BreakdownStep() {
       {/* Primary CTA */}
       <button
         onClick={() => setShowSplitwise(true)}
-        className="min-h-[44px] text-white font-semibold rounded-xl px-4 transition-colors"
+        className="press min-h-[44px] text-white font-semibold rounded-xl px-4 transition-colors"
         style={{ backgroundColor: '#1EB941' }}
       >
         Add to Splitwise
@@ -155,13 +155,13 @@ export default function BreakdownStep() {
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="flex-1 min-h-[44px] border border-gray-200 bg-white disabled:bg-gray-100 text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
+          className="press flex-1 min-h-[44px] border border-gray-200 bg-white disabled:bg-gray-100 text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
         >
           {downloading ? 'Generating...' : 'Save Image'}
         </button>
         <button
           onClick={handleCopy}
-          className="flex-1 min-h-[44px] border border-gray-200 bg-white text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
+          className="press flex-1 min-h-[44px] border border-gray-200 bg-white text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
         >
           {copied ? 'Copied!' : 'Copy Text'}
         </button>

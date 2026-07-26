@@ -184,12 +184,12 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                   onKeyDown={e => e.key === 'Enter' && apiKey && handleValidateKey()}
                 />
                 <a
-                  href="https://secure.splitwise.com/api/test"
+                  href="https://secure.splitwise.com/apps"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-green-600 mt-0.5"
                 >
-                  Get your key at splitwise.com/api/test →
+                  Get your key at splitwise.com/apps →
                 </a>
               </div>
               {keyError && <p className="text-sm text-red-600">{keyError}</p>}

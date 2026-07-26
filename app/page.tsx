@@ -31,7 +31,9 @@ function AppShell() {
           <h1 className="text-xl font-bold text-gray-800 text-center">Grocery Splitter</h1>
           <StepIndicator currentStep={state.step} totalSteps={5} />
         </div>
-        <div className="flex-1 pb-8">{stepComponents[state.step]}</div>
+        <div key={state.step} className="flex-1 pb-8 animate-fade-in-up">
+          {stepComponents[state.step]}
+        </div>
       </main>
     </>
   );

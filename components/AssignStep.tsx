@@ -8,6 +8,10 @@ export default function AssignStep() {
   const { state, dispatch } = useApp();
   const { items, people, assignments, currency } = state;
   const includedPeople = people.filter((p) => p.included);
+  // Discounts (negative-price lines) aren't assignable to a specific person, so
+  // they don't belong on this page. They stay in state and are split equally
+  // across everyone in the final totals, so the math still matches the receipt.
+  const assignableItems = items.filter((item) => item.price >= 0);
 
   // Initialize assignments for items that don't have one yet
   useEffect(() => {
@@ -72,10 +76,14 @@ export default function AssignStep() {
       <p className="text-gray-500 text-sm text-center">Who pays for each item?</p>
 
       <div className="flex flex-col gap-3">
-        {items.map((item) => {
+        {assignableItems.map((item, i) => {
           const assignment = getAssignment(item.id);
           return (
-            <div key={item.id} className="bg-white rounded-2xl shadow-sm px-4 py-4">
+            <div
+              key={item.id}
+              className="bg-white rounded-2xl shadow-sm px-4 py-4 animate-fade-in-up"
+              style={{ animationDelay: `${i * 55}ms` }}
+            >
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-gray-800 text-sm flex-1 mr-2">{item.name}</span>
                 <span className="text-gray-600 font-semibold text-sm">{currency}{item.price.toFixed(2)}</span>
@@ -92,7 +100,7 @@ export default function AssignStep() {
               <div className="flex gap-2 mb-3">
                 <button
                   onClick={() => setMode(item.id, 'equal')}
-                  className={`flex-1 min-h-[36px] rounded-lg text-sm font-medium border transition-colors ${
+                  className={`press flex-1 min-h-[36px] rounded-lg text-sm font-medium border transition-colors ${
                     assignment.mode === 'equal'
                       ? 'bg-green-500 text-white border-green-500'
                       : 'bg-white text-gray-600 border-gray-200'
@@ -102,7 +110,7 @@ export default function AssignStep() {
                 </button>
                 <button
                   onClick={() => setMode(item.id, 'specific')}
-                  className={`flex-1 min-h-[36px] rounded-lg text-sm font-medium border transition-colors ${
+                  className={`press flex-1 min-h-[36px] rounded-lg text-sm font-medium border transition-colors ${
                     assignment.mode === 'specific'
                       ? 'bg-green-500 text-white border-green-500'
                       : 'bg-white text-gray-600 border-gray-200'
@@ -120,7 +128,7 @@ export default function AssignStep() {
                       <button
                         key={person.id}
                         onClick={() => togglePerson(item.id, person.id)}
-                        className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                        className={`press rounded-full border px-3 py-1 text-sm transition-colors ${
                           active
                             ? 'bg-green-500 text-white border-green-500'
                             : 'bg-white text-gray-600 border-gray-200'
@@ -147,13 +155,13 @@ export default function AssignStep() {
       <div className="flex gap-3">
         <button
           onClick={() => dispatch({ type: 'SET_STEP', payload: 3 as Step })}
-          className="min-h-[44px] flex-1 border border-gray-200 text-gray-600 font-semibold rounded-xl px-4 bg-white"
+          className="press min-h-[44px] flex-1 border border-gray-200 text-gray-600 font-semibold rounded-xl px-4 bg-white"
         >
           Back
         </button>
         <button
           onClick={() => dispatch({ type: 'SET_STEP', payload: 5 as Step })}
-          className="min-h-[44px] flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl px-4 transition-colors"
+          className="press min-h-[44px] flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl px-4 transition-colors"
         >
           See Breakdown
         </button>
