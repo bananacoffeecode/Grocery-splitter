@@ -90,8 +90,8 @@ async function groqParse(images: InputImage[], key: string): Promise<ParsedRecei
     temperature: 0,
     // With reasoning off the JSON is small (~450 tokens for 12 items), so a big
     // max_tokens just wastes the free 8k-TPM budget and 413s on multi-image scans.
-    // 1600 leaves ample room for a long receipt while keeping requests under 8k.
-    max_tokens: 1600,
+    // 1200 still leaves ~2.5x headroom for a long receipt.
+    max_tokens: 1200,
     // Qwen is a reasoning model and ignores "/no_think" in the prompt — it will
     // "think" until it exhausts max_tokens and never emit JSON. This Groq param
     // actually disables reasoning, so the model returns the JSON directly.

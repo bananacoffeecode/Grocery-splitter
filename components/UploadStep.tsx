@@ -45,6 +45,43 @@ async function toUploadBase64(file: File, maxDim: number): Promise<{ base64: str
   return { base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' };
 }
 
+// Groq bills a roughly FIXED token cost per image (resolution barely matters), so
+// N separate screenshots blow past the free 8k-token cap. Stacking them into ONE
+// tall image is one cheap image regardless of how many — it always fits, and the
+// model de-duplicates any overlapping rows.
+async function stitchToBase64(files: File[]): Promise<{ base64: string; mimeType: string }> {
+  const imgs = await Promise.all(files.map(loadImage));
+  const targetW = 760;
+  const rows = imgs.map((img) => ({ img, h: Math.round(img.height * (targetW / img.width)) }));
+  const totalH = rows.reduce((s, r) => s + r.h, 0);
+  const maxH = 3200; // cap so the combined image stays readable and light
+  const k = totalH > maxH ? maxH / totalH : 1;
+  const w = Math.round(targetW * k);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = Math.round(totalH * k);
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  let y = 0;
+  for (const r of rows) {
+    const h = Math.round(r.h * k);
+    ctx.drawImage(r.img, 0, y, w, h);
+    y += h;
+  }
+
+  let quality = 0.72;
+  let dataUrl = canvas.toDataURL('image/jpeg', quality);
+  while (dataUrl.length > 1_400_000 && quality > 0.4) {
+    quality -= 0.12;
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  }
+  return { base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' };
+}
+
 export default function UploadStep() {
   const { dispatch } = useApp();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -95,17 +132,12 @@ export default function UploadStep() {
     setError(null);
 
     try {
-      // Send ALL screenshots together in one request. Groq reads them as a single
-      // receipt — merging overlapping screenshots and de-duplicating shared items —
-      // so the result tallies to one total. No client-side OCR: Groq only.
-      // One receipt → keep it large & readable; multiple → shrink to fit the token budget.
-      const maxDim = files.length <= 1 ? 1500 : 900;
-      const images = await Promise.all(
-        files.map(async (file) => {
-          const { base64, mimeType } = await toUploadBase64(file, maxDim);
-          return { imageBase64: base64, mimeType };
-        })
-      );
+      // One screenshot → send it large & readable. Multiple → stitch them into a
+      // single tall image so the request stays one cheap image under the free tier,
+      // and Groq merges/de-duplicates the overlapping rows into one receipt.
+      const { base64, mimeType } =
+        files.length === 1 ? await toUploadBase64(files[0], 1500) : await stitchToBase64(files);
+      const images = [{ imageBase64: base64, mimeType }];
 
       const res = await fetch('/api/parse', {
         method: 'POST',
@@ -150,7 +182,7 @@ export default function UploadStep() {
 
   return (
     <div
-      className="flex flex-col gap-5 pt-6"
+      className="flex flex-col gap-3 pt-6"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
