@@ -35,9 +35,13 @@ Rules:
 - currency is the symbol (₹, $, £, €). orderDate as "12 Mar 2026" or null.
 Return only the JSON object.`;
 
-// Parse a vision model's JSON string into our shape. Tolerates prose/code fences.
+// Parse a vision model's JSON string into our shape. Tolerates reasoning
+// (<think>…</think>), code fences, and surrounding prose.
 function normalizeVisionJson(text: string): ParsedReceipt | null {
-  const match = text.match(/\{[\s\S]*\}/);
+  const cleaned = text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/```(?:json)?/gi, '');
+  const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) return null;
   const parsed = JSON.parse(match[0]);
   const items: ParsedItem[] = (parsed.items || [])
@@ -84,7 +88,14 @@ async function groqParse(images: InputImage[], key: string): Promise<ParsedRecei
   const completion = await groq.chat.completions.create({
     model: 'qwen/qwen3.6-27b',
     temperature: 0,
-    response_format: { type: 'json_object' },
+    // With reasoning off the JSON is small (~450 tokens for 12 items), so a big
+    // max_tokens just wastes the free 8k-TPM budget and 413s on multi-image scans.
+    // 1600 leaves ample room for a long receipt while keeping requests under 8k.
+    max_tokens: 1600,
+    // Qwen is a reasoning model and ignores "/no_think" in the prompt — it will
+    // "think" until it exhausts max_tokens and never emit JSON. This Groq param
+    // actually disables reasoning, so the model returns the JSON directly.
+    reasoning_effort: 'none',
     messages: [
       {
         role: 'user',

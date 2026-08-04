@@ -153,16 +153,20 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
   const canCreate = payerMemberId != null && mappedPeople().length > 0 && totalCost > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex flex-col justify-end animate-fade-in" style={{ backgroundColor: 'rgba(28,27,46,0.45)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-t-[30px] w-full max-w-lg mx-auto max-h-[90vh] overflow-y-auto animate-fade-in-up"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
         onClick={e => e.stopPropagation()}
       >
+        {/* Grab handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1.5 rounded-full" style={{ background: '#e0dded' }} />
+        </div>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
-          <span className="font-semibold text-base text-gray-800">Add to Splitwise</span>
-          <button onClick={onClose} className="text-gray-400 text-2xl leading-none w-8 h-8 flex items-center justify-center">
+        <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-[var(--line)]">
+          <span className="font-semibold text-base" style={{ color: 'var(--ink)' }}>Add to Splitwise</span>
+          <button onClick={onClose} className="press text-2xl leading-none w-8 h-8 flex items-center justify-center" style={{ color: 'var(--ink-faint)' }}>
             &times;
           </button>
         </div>
@@ -180,14 +184,14 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                   value={apiKey}
                   onChange={e => { setApiKey(e.target.value); setKeyError(null); }}
                   placeholder="Paste your API key"
-                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-green-400"
+                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#a6a4ba]"
                   onKeyDown={e => e.key === 'Enter' && apiKey && handleValidateKey()}
                 />
                 <a
                   href="https://secure.splitwise.com/apps"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-green-600 mt-0.5"
+                  className="text-xs text-[#7c5ce6] mt-0.5"
                 >
                   Get your key at splitwise.com/apps →
                 </a>
@@ -198,7 +202,7 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                   type="checkbox"
                   checked={rememberKey}
                   onChange={e => setRememberKey(e.target.checked)}
-                  className="accent-green-500 w-4 h-4"
+                  className="accent-[#8b6cff] w-4 h-4"
                 />
                 Remember this key
               </label>
@@ -206,7 +210,7 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                 onClick={handleValidateKey}
                 disabled={!apiKey || keyLoading}
                 className="min-h-[44px] rounded-xl font-semibold text-white text-sm transition-colors disabled:opacity-50"
-                style={{ backgroundColor: '#1EB941' }}
+                style={{ backgroundColor: '#8b6cff' }}
               >
                 {keyLoading ? 'Connecting…' : 'Continue'}
               </button>
@@ -225,7 +229,7 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
               {groupsError && (
                 <div className="flex flex-col gap-2">
                   <p className="text-sm text-red-600">{groupsError}</p>
-                  <button onClick={handleLoadGroups} className="text-sm text-green-600 underline">Retry</button>
+                  <button onClick={handleLoadGroups} className="text-sm text-[#7c5ce6] underline">Retry</button>
                 </div>
               )}
               {!groupsLoading && !groupsError && groups.length === 0 && (
@@ -235,7 +239,7 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                 <button
                   key={g.id}
                   onClick={() => setSelectedGroup(g)}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 transition-colors text-left"
+                  className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors text-left"
                 >
                   <span className="font-medium text-sm text-gray-800">{g.name}</span>
                   <span className="text-xs text-gray-400">{g.members.length} members ›</span>
@@ -314,7 +318,7 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                 onClick={handleCreate}
                 disabled={!canCreate}
                 className="min-h-[44px] rounded-xl font-semibold text-white text-sm transition-colors disabled:opacity-40"
-                style={{ backgroundColor: canCreate ? '#1EB941' : undefined }}
+                style={{ backgroundColor: canCreate ? '#8b6cff' : undefined }}
               >
                 Create Expense — {currency}{totalCost.toFixed(2)}
               </button>
@@ -335,7 +339,7 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
               )}
               {!creating && successDesc && (
                 <div className="flex flex-col items-center gap-4 py-6">
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl" style={{ backgroundColor: '#e6f9eb' }}>
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl" style={{ backgroundColor: '#eef0f7' }}>
                     ✓
                   </div>
                   <div className="text-center">
@@ -347,14 +351,14 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                     href="https://secure.splitwise.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-green-600 underline"
+                    className="text-sm text-[#7c5ce6] underline"
                   >
                     View on Splitwise →
                   </a>
                   <button
                     onClick={onClose}
                     className="min-h-[44px] w-full rounded-xl font-semibold text-white text-sm"
-                    style={{ backgroundColor: '#1EB941' }}
+                    style={{ backgroundColor: '#8b6cff' }}
                   >
                     Done
                   </button>
@@ -371,7 +375,7 @@ export default function SplitwiseModal({ personTotals, items, currency, dateStr,
                     <button
                       onClick={() => { setCreateError(null); setScreen('map'); }}
                       className="flex-1 min-h-[44px] rounded-xl font-semibold text-white text-sm"
-                      style={{ backgroundColor: '#1EB941' }}
+                      style={{ backgroundColor: '#8b6cff' }}
                     >
                       Try Again
                     </button>

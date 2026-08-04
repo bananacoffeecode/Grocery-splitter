@@ -72,8 +72,8 @@ export default function AssignStep() {
   }
 
   return (
-    <div className="flex flex-col gap-4 pt-4">
-      <p className="text-gray-500 text-sm text-center">Who pays for each item?</p>
+    <div className="flex flex-col gap-4 pt-6">
+      <p className="text-center text-sm" style={{ color: 'var(--ink-soft)' }}>Who pays for each item?</p>
 
       <div className="flex flex-col gap-3">
         {assignableItems.map((item, i) => {
@@ -81,16 +81,16 @@ export default function AssignStep() {
           return (
             <div
               key={item.id}
-              className="bg-white rounded-2xl shadow-sm px-4 py-4 animate-fade-in-up"
+              className="card px-5 py-4 animate-fade-in-up"
               style={{ animationDelay: `${i * 55}ms` }}
             >
               <div className="flex justify-between items-center mb-1">
-                <span className="font-medium text-gray-800 text-sm flex-1 mr-2">{item.name}</span>
-                <span className="text-gray-600 font-semibold text-sm">{currency}{item.price.toFixed(2)}</span>
+                <span className="font-semibold text-[15px] flex-1 mr-2" style={{ color: 'var(--ink)' }}>{item.name}</span>
+                <span className="font-bold text-[15px] gradient-text">{currency}{item.price.toFixed(2)}</span>
               </div>
 
               {(item.source && item.source !== 'Receipt') || item.orderDate ? (
-                <p className="text-xs text-gray-400 mt-0.5 mb-3">
+                <p className="text-xs mt-0.5 mb-3" style={{ color: 'var(--ink-faint)' }}>
                   {item.source && item.source !== 'Receipt' ? item.source : ''}
                   {item.source && item.source !== 'Receipt' && item.orderDate ? ' · ' : ''}
                   {item.orderDate ?? ''}
@@ -100,41 +100,35 @@ export default function AssignStep() {
               <div className="flex gap-2 mb-3">
                 <button
                   onClick={() => setMode(item.id, 'equal')}
-                  className={`press flex-1 min-h-[36px] rounded-lg text-sm font-medium border transition-colors ${
-                    assignment.mode === 'equal'
-                      ? 'bg-green-500 text-white border-green-500'
-                      : 'bg-white text-gray-600 border-gray-200'
-                  }`}
+                  className={`chip flex-1 min-h-[40px] text-sm font-medium ${assignment.mode === 'equal' ? 'chip-active' : ''}`}
                 >
                   Split equally
                 </button>
                 <button
                   onClick={() => setMode(item.id, 'specific')}
-                  className={`press flex-1 min-h-[36px] rounded-lg text-sm font-medium border transition-colors ${
-                    assignment.mode === 'specific'
-                      ? 'bg-green-500 text-white border-green-500'
-                      : 'bg-white text-gray-600 border-gray-200'
-                  }`}
+                  className={`chip flex-1 min-h-[40px] text-sm font-medium ${assignment.mode === 'specific' ? 'chip-active' : ''}`}
                 >
                   Assign to specific
                 </button>
               </div>
 
               {assignment.mode === 'specific' && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 animate-fade-in">
                   {includedPeople.map((person) => {
                     const active = assignment.assignedPersonIds.includes(person.id);
                     return (
                       <button
                         key={person.id}
                         onClick={() => togglePerson(item.id, person.id)}
-                        className={`press rounded-full border px-3 py-1 text-sm transition-colors ${
-                          active
-                            ? 'bg-green-500 text-white border-green-500'
-                            : 'bg-white text-gray-600 border-gray-200'
-                        }`}
+                        className={`chip inline-flex items-center gap-1.5 pl-1.5 pr-3.5 py-1 text-sm ${active ? 'chip-active' : ''}`}
                       >
-                        {active ? '' : ''}{person.name}
+                        <span
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                          style={{ background: active ? 'rgba(255,255,255,0.6)' : '#f1eefb' }}
+                        >
+                          {person.emoji ?? '🙂'}
+                        </span>
+                        {person.name}
                       </button>
                     );
                   })}
@@ -142,7 +136,7 @@ export default function AssignStep() {
               )}
 
               {assignment.mode === 'equal' && (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs" style={{ color: 'var(--ink-faint)' }}>
                   Split between {includedPeople.length} {includedPeople.length === 1 ? 'person' : 'people'}
                   {' '}({currency}{(item.price / Math.max(includedPeople.length, 1)).toFixed(2)} each)
                 </p>
@@ -155,15 +149,15 @@ export default function AssignStep() {
       <div className="flex gap-3">
         <button
           onClick={() => dispatch({ type: 'SET_STEP', payload: 3 as Step })}
-          className="press min-h-[44px] flex-1 border border-gray-200 text-gray-600 font-semibold rounded-xl px-4 bg-white"
+          className="btn-secondary min-h-[52px] flex-1 px-4"
         >
           Back
         </button>
         <button
           onClick={() => dispatch({ type: 'SET_STEP', payload: 5 as Step })}
-          className="press min-h-[44px] flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl px-4 transition-colors"
+          className="btn-primary min-h-[52px] flex-1 px-4"
         >
-          See Breakdown
+          See breakdown
         </button>
       </div>
     </div>

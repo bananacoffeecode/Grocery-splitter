@@ -12,6 +12,7 @@ export interface Person {
   id: string;
   name: string;
   included: boolean;
+  emoji?: string;
 }
 
 export type AssignmentMode = 'equal' | 'specific';

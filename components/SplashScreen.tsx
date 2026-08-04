@@ -45,7 +45,7 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '14px',
-          backgroundColor: '#f9fafb',
+          backgroundColor: '#f2f1f7',
           transition: 'opacity 450ms ease',
           opacity: fading ? 0 : 1,
           zIndex: 50,
@@ -97,32 +97,32 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
           {/* Item row 1 */}
           <g style={{ animation: 'gs-slide 0.26s ease forwards', animationDelay: '0.42s', opacity: 0 }}>
             <rect x="18" y="49" width="50" height="6" rx="3" fill="#f3f4f6" />
-            <rect x="76" y="49" width="20" height="6" rx="3" fill="#dcfce7" />
+            <rect x="76" y="49" width="20" height="6" rx="3" fill="#e6e0ff" />
           </g>
 
           {/* Item row 2 */}
           <g style={{ animation: 'gs-slide 0.26s ease forwards', animationDelay: '0.59s', opacity: 0 }}>
             <rect x="18" y="63" width="42" height="6" rx="3" fill="#f3f4f6" />
-            <rect x="76" y="63" width="20" height="6" rx="3" fill="#dcfce7" />
+            <rect x="76" y="63" width="20" height="6" rx="3" fill="#e6e0ff" />
           </g>
 
           {/* Item row 3 */}
           <g style={{ animation: 'gs-slide 0.26s ease forwards', animationDelay: '0.76s', opacity: 0 }}>
             <rect x="18" y="77" width="56" height="6" rx="3" fill="#f3f4f6" />
-            <rect x="76" y="77" width="20" height="6" rx="3" fill="#dcfce7" />
+            <rect x="76" y="77" width="20" height="6" rx="3" fill="#e6e0ff" />
           </g>
 
           {/* Item row 4 */}
           <g style={{ animation: 'gs-slide 0.26s ease forwards', animationDelay: '0.93s', opacity: 0 }}>
             <rect x="18" y="91" width="34" height="6" rx="3" fill="#f3f4f6" />
-            <rect x="76" y="91" width="20" height="6" rx="3" fill="#dcfce7" />
+            <rect x="76" y="91" width="20" height="6" rx="3" fill="#e6e0ff" />
           </g>
 
           {/* Total section */}
           <g style={{ animation: 'gs-slide 0.28s ease forwards', animationDelay: '1.08s', opacity: 0 }}>
             <line x1="18" y1="106" x2="96" y2="106" stroke="#e5e7eb" strokeWidth="1.5" />
             <rect x="18" y="114" width="26" height="8" rx="4" fill="#e5e7eb" />
-            <rect x="62" y="114" width="30" height="8" rx="4" fill="#22c55e" />
+            <rect x="62" y="114" width="30" height="8" rx="4" fill="#8b6cff" />
           </g>
 
           {/* Green checkmark — bounces in over the receipt center */}
@@ -134,7 +134,7 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
               opacity: 0,
             }}
           >
-            <circle cx="56" cy="78" r="24" fill="#22c55e" />
+            <circle cx="56" cy="78" r="24" fill="#8b6cff" />
             <polyline
               points="45,78 53,87 69,67"
               stroke="white"
@@ -151,7 +151,7 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
           style={{
             fontSize: '16px',
             fontWeight: 700,
-            color: '#1f2937',
+            color: '#1c1b2e',
             letterSpacing: '-0.01em',
             margin: 0,
             animation: 'gs-fade-up 0.38s ease forwards',
@@ -159,7 +159,7 @@ export default function SplashScreen({ onDone }: { onDone: () => void }) {
             opacity: 0,
           }}
         >
-          Grocery Splitter
+          Tally
         </p>
 
         {/* Tagline */}

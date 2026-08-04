@@ -2,9 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { useApp } from '@/lib/AppContext';
-import { ReceiptItem, PersonTotal, Step } from '@/types';
+import { ReceiptItem, Step } from '@/types';
 import { calculateSplit, grandTotal, formatSplitwiseText } from '@/lib/calculations';
-import SplitwiseModal from '@/components/SplitwiseModal';
 
 function computeBills(items: ReceiptItem[]) {
   const map = new Map<string, { source: string; orderDate?: string; total: number }>();
@@ -24,19 +23,17 @@ export default function BreakdownStep() {
   const cardRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [showSplitwise, setShowSplitwise] = useState(false);
 
   const personTotals = calculateSplit(items, people, assignments);
   const total = grandTotal(items);
   const bills = computeBills(items);
+  const emojiOf = (personId: string) => people.find((p) => p.id === personId)?.emoji ?? '';
 
-  // Use the receipt's order date; fall back to today if none found
-  const firstOrderDate = items.find(i => i.orderDate)?.orderDate;
-  const dateStr = firstOrderDate ?? new Date().toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  // Bill date: extracted from the receipt (user-editable on the review step),
+  // falling back to an item's order date, then today.
+  const dateStr = state.billDate
+    ?? items.find(i => i.orderDate)?.orderDate
+    ?? new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   async function handleDownload() {
     if (!cardRef.current) return;
@@ -45,11 +42,11 @@ export default function BreakdownStep() {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f2f1f7',
         useCORS: true,
       });
       const link = document.createElement('a');
-      link.download = `grocery-split-${Date.now()}.png`;
+      link.download = `tally-split-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } finally {
@@ -78,118 +75,125 @@ export default function BreakdownStep() {
 
   return (
     <div className="flex flex-col gap-4 pt-4">
-      {/* Card — simple flat styles only for html2canvas */}
-      <div
-        ref={cardRef}
-        style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          padding: '24px',
-          border: '1px solid #f3f4f6',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <span style={{ fontWeight: 700, fontSize: '18px', color: '#1f2937' }}>Grocery Split</span>
-          <span style={{ fontSize: '13px', color: '#6b7280' }}>{dateStr}</span>
-        </div>
-
-        {bills.length > 0 && (
-          <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '12px', paddingBottom: '12px', borderBottom: '1px solid #f3f4f6' }}>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bills</span>
-            {bills.map((bill, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: '12px', marginTop: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500 }}>{bill.source}</span>
-                <span style={{ fontSize: '12px', color: '#9ca3af', flex: 1, textAlign: 'center' }}>{bill.orderDate ?? ''}</span>
-                <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500 }}>{currency}{bill.total.toFixed(2)}</span>
-              </div>
-            ))}
+      {/* Receipt card — flat inline styles only, so html2canvas renders it faithfully */}
+      <div ref={cardRef} style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '0', padding: '26px 22px 20px' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '30px', lineHeight: 1 }}>🧾</div>
+            <div style={{ fontWeight: 700, fontSize: '19px', color: '#1c1b2e', marginTop: '8px' }}>Grocery Split</div>
+            <input
+              value={dateStr}
+              onChange={(e) => dispatch({ type: 'SET_BILL_DATE', payload: e.target.value })}
+              aria-label="Bill date"
+              style={{ fontSize: '13px', color: '#6c6a82', marginTop: '3px', textAlign: 'center', border: 'none', outline: 'none', background: 'transparent', width: '150px' }}
+            />
           </div>
-        )}
 
-        <div style={{ borderTop: bills.length > 0 ? 'none' : '1px solid #f3f4f6' }}>
+          <div style={{ borderTop: '1.5px dashed #d7d4e6', margin: '18px 0 14px' }} />
+
+          {/* Bills */}
+          {bills.length > 0 && (
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#8b8a9e', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Bills</div>
+              {bills.map((bill, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                  <span style={{ fontSize: '13px', color: '#3f3d52', fontWeight: 500 }}>{bill.source}</span>
+                  <span style={{ fontSize: '12px', color: '#9a98ad', flex: 1, textAlign: 'center' }}>{bill.orderDate ?? ''}</span>
+                  <span style={{ fontSize: '13px', color: '#3f3d52', fontWeight: 600 }}>{currency}{bill.total.toFixed(2)}</span>
+                </div>
+              ))}
+              <div style={{ borderTop: '1.5px dashed #d7d4e6', marginTop: '14px' }} />
+            </div>
+          )}
+
+          {/* People */}
           {personTotals.map((pt) => (
-            <div key={pt.personId} style={{ borderBottom: '1px solid #f3f4f6', paddingTop: '12px', paddingBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 700, fontSize: '16px', color: '#1f2937' }}>{pt.name}</span>
-                <span style={{ fontWeight: 700, fontSize: '16px', color: '#16a34a' }}>{currency}{pt.total.toFixed(2)}</span>
+            <div key={pt.personId} style={{ paddingBottom: '14px', marginBottom: '14px', borderBottom: '1px solid #f1eff7' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '16px', color: '#1c1b2e' }}>
+                  <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#f1eefb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                    {emojiOf(pt.personId)}
+                  </span>
+                  {pt.name}
+                </span>
+                <span style={{ fontWeight: 800, fontSize: '16px', color: '#7c5ce6' }}>{currency}{pt.total.toFixed(2)}</span>
               </div>
               {pt.items.map((lineItem, i) => (
-                <div key={i} style={{ paddingLeft: '12px', marginBottom: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '13px', color: '#6b7280' }}>{lineItem.name}</span>
-                    <span style={{ fontSize: '13px', color: '#6b7280' }}>{currency}{lineItem.share.toFixed(2)}</span>
-                  </div>
-                  {(lineItem.source && lineItem.source !== 'Receipt') || lineItem.orderDate ? (
-                    <span style={{ fontSize: '11px', color: '#d1d5db' }}>
-                      {lineItem.source && lineItem.source !== 'Receipt' ? lineItem.source : ''}
-                      {lineItem.source && lineItem.source !== 'Receipt' && lineItem.orderDate ? ' · ' : ''}
-                      {lineItem.orderDate ?? ''}
-                    </span>
-                  ) : null}
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingLeft: '40px', marginBottom: '5px' }}>
+                  <span style={{ fontSize: '13.5px', color: '#4b4a5e' }}>
+                    {lineItem.name}
+                    {bills.length > 1 && lineItem.source && lineItem.source !== 'Receipt'
+                      ? <span style={{ fontSize: '11px', color: '#a3a1b5' }}> · {lineItem.source}</span>
+                      : null}
+                  </span>
+                  <span style={{ fontSize: '13.5px', color: '#4b4a5e', fontWeight: 500 }}>{currency}{lineItem.share.toFixed(2)}</span>
                 </div>
               ))}
             </div>
           ))}
+
+          {/* Total */}
+          <div style={{ borderTop: '1.5px dashed #d7d4e6', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 800, fontSize: '18px', color: '#1c1b2e' }}>Total</span>
+            <span style={{ fontWeight: 800, fontSize: '20px', color: '#7c5ce6' }}>{currency}{total.toFixed(2)}</span>
+          </div>
+
+          {/* Barcode */}
+          <div style={{ marginTop: '20px' }}>
+            <div style={{
+              height: '46px',
+              backgroundImage: 'repeating-linear-gradient(90deg, #1c1b2e 0, #1c1b2e 2px, #ffffff 2px, #ffffff 4px, #1c1b2e 4px, #1c1b2e 7px, #ffffff 7px, #ffffff 9px, #1c1b2e 9px, #1c1b2e 10px, #ffffff 10px, #ffffff 13px)',
+            }} />
+            <div style={{ textAlign: 'center', fontSize: '11px', letterSpacing: '3px', color: '#8b8a9e', marginTop: '8px', fontFamily: 'ui-monospace, monospace' }}>
+              TALLY · {String(Math.round(total * 100)).padStart(6, '0')}
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '14px', marginTop: '4px', borderTop: '2px solid #e5e7eb' }}>
-          <span style={{ fontWeight: 700, fontSize: '17px', color: '#1f2937' }}>Total</span>
-          <span style={{ fontWeight: 700, fontSize: '17px', color: '#1f2937' }}>{currency}{total.toFixed(2)}</span>
-        </div>
+        {/* Scalloped receipt bottom edge */}
+        <div style={{
+          height: '11px',
+          backgroundColor: 'transparent',
+          backgroundImage: 'radial-gradient(circle at 11px 0, #ffffff 11px, transparent 11.5px)',
+          backgroundSize: '22px 11px',
+          backgroundRepeat: 'repeat-x',
+          backgroundPosition: 'left top',
+        }} />
       </div>
 
       {/* Buttons — outside card ref so they don't appear in screenshot */}
 
-      {/* Primary CTA */}
-      <button
-        onClick={() => setShowSplitwise(true)}
-        className="press min-h-[44px] text-white font-semibold rounded-xl px-4 transition-colors"
-        style={{ backgroundColor: '#1EB941' }}
-      >
-        Add to Splitwise
-      </button>
-
-      {/* Secondary actions side-by-side */}
+      {/* Back, Save image, Copy text — one line */}
       <div className="flex gap-3">
         <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="press flex-1 min-h-[44px] border border-gray-200 bg-white disabled:bg-gray-100 text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
+          onClick={() => dispatch({ type: 'SET_STEP', payload: 4 as Step })}
+          className="btn-secondary flex-1 min-h-[52px] px-2 text-sm"
         >
-          {downloading ? 'Generating...' : 'Save Image'}
+          Back
         </button>
         <button
           onClick={handleCopy}
-          className="press flex-1 min-h-[44px] border border-gray-200 bg-white text-gray-700 font-semibold rounded-xl px-3 text-sm hover:bg-gray-50 transition-colors"
+          className="btn-secondary flex-1 min-h-[52px] px-2 text-sm"
         >
-          {copied ? 'Copied!' : 'Copy Text'}
+          {copied ? 'Copied!' : 'Copy text'}
+        </button>
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="btn-primary flex-1 min-h-[52px] px-2 text-sm"
+        >
+          {downloading ? 'Generating…' : 'Save image'}
         </button>
       </div>
 
       <button
-        onClick={() => dispatch({ type: 'SET_STEP', payload: 4 as Step })}
-        className="min-h-[44px] text-gray-400 underline text-sm"
-      >
-        Back to assignments
-      </button>
-
-      <button
         onClick={() => dispatch({ type: 'SET_STEP', payload: 1 as Step })}
-        className="min-h-[44px] text-gray-400 underline text-sm"
+        className="press min-h-[40px] text-sm font-semibold"
+        style={{ color: 'var(--ink)' }}
       >
         Start over
       </button>
-
-      {showSplitwise && (
-        <SplitwiseModal
-          personTotals={personTotals}
-          items={items}
-          currency={currency}
-          dateStr={dateStr}
-          onClose={() => setShowSplitwise(false)}
-        />
-      )}
     </div>
   );
 }

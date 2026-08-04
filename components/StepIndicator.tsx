@@ -9,13 +9,14 @@ export default function StepIndicator({ currentStep, totalSteps }: Props) {
       {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
         <div
           key={step}
-          className={`w-2.5 h-2.5 rounded-full transition-colors ${
+          className="h-2 rounded-full transition-all duration-300"
+          style={
             step === currentStep
-              ? 'bg-green-500'
+              ? { width: 22, background: '#8b6cff' }
               : step < currentStep
-              ? 'bg-green-300'
-              : 'bg-gray-300'
-          }`}
+              ? { width: 8, background: '#c4bdf0' }
+              : { width: 8, background: '#dcdae8' }
+          }
         />
       ))}
     </div>

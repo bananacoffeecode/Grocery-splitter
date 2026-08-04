@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, Dispatch } from 'react';
 import { ReceiptItem, Person, ItemAssignment, Step } from '@/types';
+import { pickEmoji } from '@/lib/emoji';
 
 const PEOPLE_STORAGE_KEY = 'gs-people';
 
@@ -15,19 +16,31 @@ export interface AppState {
   assignments: ItemAssignment[];
   currency: string;
   scanWarning: string | null;
+  billDate: string | null; // extracted from the receipt, user-editable
 }
 
 const defaultPeople: Person[] = [
-  { id: '1', name: 'Sulakshana', included: true },
-  { id: '2', name: 'Chahat', included: true },
-  { id: '3', name: 'Ankita', included: true },
+  { id: '1', name: 'Sulakshana', included: true, emoji: '🦊' },
+  { id: '2', name: 'Chahat', included: true, emoji: '🐼' },
+  { id: '3', name: 'Ankita', included: true, emoji: '🐨' },
 ];
+
+// Ensure every person has an emoji (older saved people won't).
+function withEmojis(people: Person[]): Person[] {
+  const used = people.map((p) => p.emoji).filter(Boolean) as string[];
+  return people.map((p) => {
+    if (p.emoji) return p;
+    const emoji = pickEmoji(used);
+    used.push(emoji);
+    return { ...p, emoji };
+  });
+}
 
 function loadPeople(): Person[] {
   if (typeof window === 'undefined') return defaultPeople;
   try {
     const saved = localStorage.getItem(PEOPLE_STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) return withEmojis(JSON.parse(saved));
   } catch {}
   return defaultPeople;
 }
@@ -40,6 +53,7 @@ const initialState: AppState = {
   assignments: [],
   currency: '₹',
   scanWarning: null,
+  billDate: null,
 };
 
 // ── Actions ────────────────────────────────────────────────────────────────
@@ -50,6 +64,7 @@ export type Action =
   | { type: 'SET_ITEMS'; payload: ReceiptItem[] }
   | { type: 'SET_CURRENCY'; payload: string }
   | { type: 'SET_SCAN_WARNING'; payload: string | null }
+  | { type: 'SET_BILL_DATE'; payload: string | null }
   | { type: 'UPSERT_ITEM'; payload: ReceiptItem }
   | { type: 'DELETE_ITEM'; payload: string }
   | { type: 'SET_PEOPLE'; payload: Person[] }
@@ -69,6 +84,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, currency: action.payload };
     case 'SET_SCAN_WARNING':
       return { ...state, scanWarning: action.payload };
+    case 'SET_BILL_DATE':
+      return { ...state, billDate: action.payload };
     case 'UPSERT_ITEM': {
       const exists = state.items.find((i) => i.id === action.payload.id);
       return {

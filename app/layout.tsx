@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Grocery Splitter',
-  description: 'Split grocery bills with flatmates',
+  title: 'Tally',
+  description: 'Snap your receipts and split the bill in seconds',
 };
 
 export default function RootLayout({
@@ -15,9 +15,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="theme-color" content="#f9fafb" />
+        <meta name="theme-color" content="#f2f1f7" />
       </head>
-      <body className="bg-gray-50 font-sans">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

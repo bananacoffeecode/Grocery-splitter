@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useApp } from '@/lib/AppContext';
 import { Person, Step } from '@/types';
+import { pickEmoji } from '@/lib/emoji';
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -29,11 +30,18 @@ export default function PeopleStep() {
   function addPerson() {
     const name = input.trim();
     if (!name) return;
+    const used = state.people.map((p) => p.emoji).filter(Boolean) as string[];
     dispatch({
       type: 'UPSERT_PERSON',
-      payload: { id: generateId(), name, included: true },
+      payload: { id: generateId(), name, included: true, emoji: pickEmoji(used) },
     });
     setInput('');
+  }
+
+  // Re-roll a person's emoji to another unused one.
+  function changeEmoji(person: Person) {
+    const used = state.people.map((p) => p.emoji).filter(Boolean) as string[];
+    dispatch({ type: 'UPSERT_PERSON', payload: { ...person, emoji: pickEmoji(used) } });
   }
 
   function startEdit(person: Person) {
@@ -58,14 +66,14 @@ export default function PeopleStep() {
   }
 
   return (
-    <div className="flex flex-col gap-4 pt-4">
-      <p className="text-gray-500 text-sm text-center">Who is splitting this bill?</p>
+    <div className="flex flex-col gap-4 pt-6">
+      <p className="text-center text-sm" style={{ color: 'var(--ink-soft)' }}>Who is splitting this bill?</p>
 
-      <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100">
+      <div className="card divide-y divide-[var(--line)] overflow-hidden">
         {state.people.map((person, i) => (
           <div
             key={person.id}
-            className="flex items-center gap-3 px-4 py-3 min-h-[44px] animate-fade-in-up"
+            className="flex items-center gap-3 px-5 py-3.5 min-h-[48px] animate-fade-in-up"
             style={{ animationDelay: `${i * 60}ms` }}
           >
             <button
@@ -74,15 +82,27 @@ export default function PeopleStep() {
               aria-checked={person.included}
               aria-label={`${person.included ? 'Deselect' : 'Select'} ${person.name}`}
               onClick={() => toggle(person)}
-              className={`press w-5 h-5 rounded flex items-center justify-center border transition-colors ${
-                person.included ? 'bg-green-500 border-green-500' : 'bg-white border-gray-300'
-              }`}
+              className="press w-6 h-6 rounded-lg flex items-center justify-center border transition-colors"
+              style={
+                person.included
+                  ? { background: '#8b6cff', borderColor: 'transparent' }
+                  : { background: '#fff', borderColor: '#d6d4e4' }
+              }
             >
               {person.included && (
                 <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 text-white animate-pop" fill="none" stroke="currentColor" strokeWidth="3.5">
                   <path d="M5 10.5l3.2 3.2L15 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => changeEmoji(person)}
+              aria-label={`Change ${person.name}'s emoji`}
+              className="press w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+              style={{ background: '#f1eefb' }}
+            >
+              {person.emoji ?? '🙂'}
             </button>
             {editingId === person.id ? (
               <input
@@ -95,11 +115,13 @@ export default function PeopleStep() {
                   if (e.key === 'Enter') commitEdit(person);
                   if (e.key === 'Escape') setEditingId(null);
                 }}
-                className="flex-1 text-sm border-b border-green-400 outline-none bg-transparent text-gray-800"
+                className="flex-1 text-sm border-b outline-none bg-transparent"
+                style={{ borderColor: '#b784ff', color: 'var(--ink)' }}
               />
             ) : (
               <span
-                className={`flex-1 text-sm ${person.included ? 'text-gray-800' : 'text-gray-400'}`}
+                className="flex-1 text-[15px]"
+                style={{ color: person.included ? 'var(--ink)' : 'var(--ink-faint)' }}
                 onClick={() => startEdit(person)}
               >
                 {person.name}
@@ -107,7 +129,8 @@ export default function PeopleStep() {
             )}
             <button
               onClick={() => remove(person.id)}
-              className="text-gray-300 hover:text-red-400 text-lg transition-colors"
+              className="press text-lg transition-colors"
+              style={{ color: 'var(--ink-faint)' }}
             >
               &times;
             </button>
@@ -115,12 +138,12 @@ export default function PeopleStep() {
         ))}
       </div>
 
-      <div className="flex gap-2 text-sm justify-center">
-        <button onClick={() => selectAll(true)} className="text-green-600 underline">
+      <div className="flex gap-3 text-sm justify-center">
+        <button onClick={() => selectAll(true)} className="press font-semibold gradient-text">
           Select all
         </button>
-        <span className="text-gray-300">|</span>
-        <button onClick={() => selectAll(false)} className="text-gray-500 underline">
+        <span style={{ color: 'var(--ink-faint)' }}>|</span>
+        <button onClick={() => selectAll(false)} className="press font-medium" style={{ color: 'var(--ink-soft)' }}>
           Deselect all
         </button>
       </div>
@@ -132,12 +155,13 @@ export default function PeopleStep() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addPerson()}
           placeholder="Add a person..."
-          className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-900 outline-none focus:border-green-400"
+          className="flex-1 card-sm px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#c7bcff]"
+          style={{ color: 'var(--ink)' }}
         />
         <button
           onClick={addPerson}
           disabled={!input.trim()}
-          className="press min-h-[44px] bg-green-500 hover:bg-green-600 disabled:bg-gray-200 text-white font-semibold rounded-xl px-4 transition-colors"
+          className="btn-secondary min-h-[44px] px-5 disabled:opacity-50"
         >
           Add
         </button>
@@ -146,14 +170,14 @@ export default function PeopleStep() {
       <div className="flex gap-3">
         <button
           onClick={() => dispatch({ type: 'SET_STEP', payload: 2 as Step })}
-          className="press min-h-[44px] flex-1 border border-gray-200 text-gray-600 font-semibold rounded-xl px-4 bg-white"
+          className="btn-secondary min-h-[52px] flex-1 px-4"
         >
           Back
         </button>
         <button
           onClick={() => dispatch({ type: 'SET_STEP', payload: 4 as Step })}
           disabled={!canContinue}
-          className="press min-h-[44px] flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl px-4 transition-colors"
+          className="btn-primary min-h-[52px] flex-1 px-4"
         >
           Continue
         </button>

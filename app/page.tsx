@@ -26,12 +26,22 @@ function AppShell() {
   return (
     <>
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
-      <main className="min-h-screen bg-gray-50 flex flex-col max-w-lg mx-auto px-4">
-        <div className="pt-6 pb-2">
-          <h1 className="text-xl font-bold text-gray-800 text-center">Grocery Splitter</h1>
+
+      {/* Dreamy gradient blobs floating behind everything */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="blob animate-float" style={{ width: 340, height: 340, top: -80, left: -90, background: '#8fb0ff' }} />
+        <div className="blob animate-float" style={{ width: 300, height: 300, top: '30%', right: -110, background: '#d5a8ff', animationDelay: '-3s' }} />
+        <div className="blob animate-float" style={{ width: 320, height: 320, bottom: -120, left: '20%', background: '#ffb3d6', animationDelay: '-6s' }} />
+      </div>
+
+      <main className="relative z-10 min-h-screen flex flex-col max-w-lg mx-auto px-5">
+        <div className="pt-8 pb-2">
+          <h1 className="text-2xl font-bold text-center tracking-tight">
+            <span className="gradient-text">Tally</span>
+          </h1>
           <StepIndicator currentStep={state.step} totalSteps={5} />
         </div>
-        <div key={state.step} className="flex-1 pb-8 animate-fade-in-up">
+        <div key={state.step} className="flex-1 pb-10 animate-fade-in-up">
           {stepComponents[state.step]}
         </div>
       </main>
