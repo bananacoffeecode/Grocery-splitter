@@ -45,10 +45,17 @@ async function toUploadBase64(file: File, maxDim: number): Promise<{ base64: str
   return { base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' };
 }
 
-// Groq bills a roughly FIXED token cost per image (resolution barely matters), so
-// N separate screenshots blow past the free 8k-token cap. Stacking them into ONE
-// tall image is one cheap image regardless of how many — it always fits, and the
-// model de-duplicates any overlapping rows.
+// Split files into at most `parts` contiguous groups (as balanced as possible).
+function chunkInto<T>(arr: T[], parts: number): T[][] {
+  const per = Math.ceil(arr.length / parts);
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += per) out.push(arr.slice(i, i + per));
+  return out;
+}
+
+// Groq bills a roughly FIXED token cost per image (~2 tiles) and internally
+// downsizes big images, so cramming many screenshots into ONE image makes each
+// too small to read. Stitching a *small* group into one image is fine.
 async function stitchToBase64(files: File[]): Promise<{ base64: string; mimeType: string }> {
   const imgs = await Promise.all(files.map(loadImage));
   const targetW = 760;
@@ -132,12 +139,18 @@ export default function UploadStep() {
     setError(null);
 
     try {
-      // One screenshot → send it large & readable. Multiple → stitch them into a
-      // single tall image so the request stays one cheap image under the free tier,
-      // and Groq merges/de-duplicates the overlapping rows into one receipt.
-      const { base64, mimeType } =
-        files.length === 1 ? await toUploadBase64(files[0], 1500) : await stitchToBase64(files);
-      const images = [{ imageBase64: base64, mimeType }];
+      // The free Groq tier fits ~2 images per request. Send 1–2 screenshots as
+      // their own full-res images; for 3+, spread them across exactly 2 images
+      // (stitching where needed) so every receipt stays large enough to read.
+      const groups = files.length <= 2 ? files.map((f) => [f]) : chunkInto(files, 2);
+      const perImageMaxDim = files.length === 1 ? 1500 : 1000;
+      const images = await Promise.all(
+        groups.map(async (g) => {
+          const { base64, mimeType } =
+            g.length === 1 ? await toUploadBase64(g[0], perImageMaxDim) : await stitchToBase64(g);
+          return { imageBase64: base64, mimeType };
+        })
+      );
 
       const res = await fetch('/api/parse', {
         method: 'POST',
