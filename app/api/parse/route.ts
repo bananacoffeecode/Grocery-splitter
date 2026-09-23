@@ -16,23 +16,27 @@ type InputImage = { imageBase64: string; mimeType?: string };
 // of the same order together so the model can merge and de-duplicate overlaps.
 const MAX_IMAGES = 5;
 
-const VISION_PROMPT = `You are a grocery receipt parser. You may be given MULTIPLE images that are screenshots of the SAME order, scrolled to different positions and often OVERLAPPING. Read them together as ONE receipt.
+const VISION_PROMPT = `You are a grocery receipt parser. You are given one or more screenshots. They may be EITHER:
+(a) multiple OVERLAPPING screenshots of the SAME order (a long receipt scrolled), OR
+(b) screenshots of SEVERAL DIFFERENT orders.
+Look at the order number / order ID in each screenshot's header (e.g. "ORDER #2485...") to tell orders apart.
 
 Return STRICT JSON only:
 {"items":[{"name":string,"price":number,"quantity":number|null}],"source":string,"orderDate":string|null,"currency":string,"grandTotal":number|null}
 
 Rules:
-- price = the FINAL amount the customer pays for that line. When two prices are shown for an item, use the current/bold one and IGNORE the struck-through, crossed-out, original or MRP price.
+- price = the FINAL amount the customer pays for that line. When two prices are shown, use the current/bold one and IGNORE the struck-through, crossed-out, original or MRP price. A fee shown as struck-through then "Free" is NOT charged — skip it.
 - price is the TOTAL for that line (all units together), not the per-unit price.
-- quantity = the number of units for that line if stated (e.g. "2 units") else null.
-- DEDUPLICATE across images: if the same item appears in more than one screenshot, include it EXACTLY ONCE. The same item is never listed twice.
-- Include every distinct purchased item exactly once.
+- DECIMALS: prices often show one decimal place like "₹107.0", "₹78.0", "₹34.0". The digits AFTER the decimal point are fractional — keep the decimal point. "₹107.0" is 107 (one hundred seven), NOT 1070. "₹78.0" is 78, NOT 780. Never drop or absorb the decimal point into the number.
+- quantity = the number of units for that line if stated (e.g. "3 x") else null.
+- SAME order across overlapping screenshots: include each item and fee EXACTLY ONCE (do not double-count a line visible in two overlapping screenshots).
+- DIFFERENT orders: include EVERY order's items and fees. Do NOT drop or merge a line just because another order has an item or fee with the same name — each order's own products, "Delivery Fee", "Handling Fee", "Offer Discount" etc. are ALL kept as separate lines.
 - A discount/coupon/cashback shown as its OWN line: include as an item with a NEGATIVE price. Per-item discounts already reflected in the final price must NOT be added separately.
-- Fees (delivery, handling, service, packing): include as positive items ONLY if actually charged. If shown as FREE or 0, skip them.
-- Do NOT include subtotal, "items total", "you saved"/savings, taxes, loyalty points, or payment rows as items.
-- grandTotal = the final amount payable printed on the receipt (e.g. "You pay", "Grand total", "Items total"), number only, or null if not shown.
-- The items you return should sum to grandTotal. If they don't, re-check for missed items or a wrong price.
-- currency is the symbol (₹, $, £, €). orderDate as "12 Mar 2026" or null.
+- Fees (delivery, handling, service, surge, packing): include as positive items ONLY if actually charged. If shown as FREE or 0, skip them.
+- Do NOT include subtotal, "item bill"/"items total", "you saved"/savings, taxes, loyalty points, or payment rows as items.
+- grandTotal = the SUM of the printed grand total of EVERY distinct order (add them together). If there is only one order, that order's grand total. null if none shown.
+- The items you return should sum to grandTotal. If they don't, re-check for missed/duplicated items or a wrong price.
+- currency is the symbol (₹, $, £, €). orderDate as "12 Mar 2026" (use the earliest if several) or null.
 Return only the JSON object.`;
 
 // Parse a vision model's JSON string into our shape. Tolerates reasoning
@@ -59,20 +63,6 @@ function normalizeVisionJson(text: string): ParsedReceipt | null {
     currency: parsed.currency || '₹',
     grandTotal: typeof parsed.grandTotal === 'number' ? parsed.grandTotal : null,
   };
-}
-
-// Safety net in case the model still emits a duplicate: collapse identical
-// name+price lines (the exact overlap-screenshot case) into one.
-function dedupeItems(items: ParsedItem[]): ParsedItem[] {
-  const seen = new Set<string>();
-  const out: ParsedItem[] = [];
-  for (const item of items) {
-    const key = `${item.name.toLowerCase().trim()}::${item.price}::${item.quantity ?? ''}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(item);
-  }
-  return out;
 }
 
 // Groq keys start with "gsk_". Anything else is treated as unconfigured.
@@ -110,6 +100,24 @@ async function groqParse(images: InputImage[], key: string): Promise<ParsedRecei
     ],
   });
   return normalizeVisionJson(completion.choices[0]?.message?.content || '');
+}
+
+// Repair the common decimal misread where one price loses its decimal point
+// (e.g. "₹107.0" read as 1070). Only acts when dividing exactly one inflated
+// item by 10 makes the items sum to the printed grand total — so it never
+// "corrects" a genuinely large price; it just resolves a provable mismatch.
+function reconcileDecimalMisread(items: ParsedItem[], grandTotal: number | null): ParsedItem[] {
+  if (grandTotal === null) return items;
+  const sum = (arr: ParsedItem[]) => Math.round(arr.reduce((s, i) => s + (i.price ?? 0), 0) * 100) / 100;
+  if (Math.abs(sum(items) - grandTotal) <= 0.5) return items;
+
+  for (let i = 0; i < items.length; i++) {
+    // Only consider positive prices that look like a dropped decimal (integer, ≥100).
+    if (items[i].price < 100 || items[i].price % 1 !== 0) continue;
+    const trial = items.map((it, j) => (j === i ? { ...it, price: it.price / 10 } : it));
+    if (Math.abs(sum(trial) - grandTotal) <= 0.5) return trial;
+  }
+  return items;
 }
 
 // Warn when the extracted items don't sum to the receipt's printed total.
@@ -159,7 +167,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const items = dedupeItems(parsed.items);
+    const items = reconcileDecimalMisread(parsed.items, parsed.grandTotal);
     const tallyWarning = buildTallyWarning(items, parsed.grandTotal, parsed.currency);
     return Response.json({ ...parsed, items, engine: 'groq', tallyWarning });
   } catch (err: unknown) {
