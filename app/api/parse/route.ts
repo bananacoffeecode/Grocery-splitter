@@ -86,7 +86,7 @@ async function groqParse(images: InputImage[], key: string): Promise<ParsedRecei
   const Groq = (await import('groq-sdk')).default;
   const groq = new Groq({ apiKey: key });
   const completion = await groq.chat.completions.create({
-    model: 'qwen/qwen3.6-27b',
+    model: 'qwen/qwen3.8-27b',
     temperature: 0,
     // With reasoning off the JSON is small (~450 tokens for 12 items), so a big
     // max_tokens just wastes the free 8k-TPM budget and 413s on multi-image scans.
